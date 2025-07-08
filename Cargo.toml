@@ -1,5 +1,5 @@
 [package]
-name = "rust-timer"
+name = "interval-timer"
 version = "0.1.0"
 edition = "2024"
 
