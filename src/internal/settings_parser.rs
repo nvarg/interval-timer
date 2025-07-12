@@ -3,26 +3,30 @@ use std::io;
 
 use crate::internal::keys_and_values::{KeysAndValues, ParseError};
 
-#[derive(Default, Clone)]
-pub struct AppConfig {
+#[derive(Default, Clone, Debug)]
+pub struct AppSettings {
     pub timers: Vec<(u64, (u8, u8, u8))>,
     pub tick_interval: u64,
     pub play_once: bool,
-    pub vol: f32,
+    pub volume: f32,
+    pub use_custom_sound: bool,
+    pub custom_sound_location: String,
 }
 
 static DEFAULT_TICK_INTERVAL: u64 = 50;
 static DEFAULT_PLAY_ONCE: bool = false;
-static DEFAULT_VOL: f32 = 0.5;
+static DEFAULT_VOLUME: f32 = 0.5;
+static DEFAULT_USE_CUSTOM_SOUND: bool = false;
+static DEFAULT_CUSTOM_SOUND_LOCATION: String = String::new();
 
-impl AppConfig {
+impl AppSettings {
     pub fn new_from_file(path: &str) -> Result<Self, String> {
         let file_content = match fs::read_to_string(path) {
             Ok(value) => value,
             Err(e) if e.kind() == io::ErrorKind::NotFound => String::new(),
             Err(e) => return Err(format!("Unhandled io error: {}", e)),
         };
-        AppConfig::new_from_str(file_content)
+        AppSettings::new_from_str(file_content)
     }
 
     pub fn new_from_str(data: String) -> Result<Self, String> {
@@ -46,17 +50,32 @@ impl AppConfig {
             Err(e) => return Err(e.to_string()),
         };
 
-        let vol = match kv.get("vol", |v| v.parse::<f32>()) {
+        let volume = match kv.get("volume", |v| v.parse::<f32>()) {
             Ok(value) => value,
-            Err(ParseError::MissingKey(_)) => DEFAULT_VOL,
+            Err(ParseError::MissingKey(_)) => DEFAULT_VOLUME,
             Err(e) => return Err(e.to_string()),
         };
 
+        let use_custom_sound = match kv.get("use_custom_sound", |v| v.parse::<bool>()) {
+            Ok(value) => value,
+            Err(ParseError::MissingKey(_)) => DEFAULT_USE_CUSTOM_SOUND,
+            Err(e) => return Err(e.to_string()),
+        };
+
+        let custom_sound_location: String =
+            match kv.get("custom_sound_location", |v| Ok::<_, &str>(v.to_string())) {
+                Ok(value) => value,
+                Err(ParseError::MissingKey(_)) => DEFAULT_CUSTOM_SOUND_LOCATION.clone(),
+                Err(e) => return Err(e.to_string()),
+            };
+
         Ok(Self {
-            timers: timers,
-            tick_interval: tick_interval,
-            play_once: play_once,
-            vol: vol,
+            timers,
+            tick_interval,
+            play_once,
+            volume,
+            use_custom_sound,
+            custom_sound_location,
         })
     }
 
@@ -71,6 +90,13 @@ impl AppConfig {
         kv.set("timers", &self.timers, |v| timers_to_string(v));
         kv.set("tick_interval", &self.tick_interval, |v| v.to_string());
         kv.set("play_once", &self.play_once, |v| v.to_string());
+        kv.set("volume", &self.volume, |v| v.to_string());
+        kv.set("use_custom_sound", &self.use_custom_sound, |v| {
+            v.to_string()
+        });
+        kv.set("custom_sound_location", &self.custom_sound_location, |v| {
+            v.to_string()
+        });
 
         Ok(kv)
     }

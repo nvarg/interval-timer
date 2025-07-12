@@ -21,11 +21,7 @@ pub fn draw(
     let center = response.rect.center();
     let radius = response.rect.width().min(response.rect.height()) / 2.0 - 4.0;
 
-    if frac >= 1.0 {
-        painter.circle_filled(center, radius, color);
-    } else {
-        draw_segments(&mut painter, center, radius, color, frac);
-    }
+    draw_segments(&mut painter, center, radius, color, frac);
 
     if let Some(text) = text {
         painter.text(
@@ -51,13 +47,14 @@ pub fn draw_segments(
     let bg_color = color.linear_multiply(0.05);
     let error_margin = 0.01;
 
-    if frac < error_margin || frac > 1.0 - error_margin {
-        painter.circle_filled(center, radius, color);
+    if frac < error_margin {
+        painter.circle_filled(center, radius, bg_color);
         return;
     }
 
-    if frac.abs() < error_margin {
-        painter.circle_filled(center, radius, bg_color);
+    if frac > 1.0 - error_margin {
+        painter.circle_filled(center, radius, color);
+        return;
     }
 
     const MAX_SEGMENTS: usize = 100;

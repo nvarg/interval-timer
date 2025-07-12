@@ -28,6 +28,16 @@ impl<T> Queue<T> {
         self.items.get_mut(self.front_index)
     }
 
+    pub fn prev(&mut self) {
+        if !self.items.is_empty() {
+            if self.front_index == 0 {
+                self.front_index = self.items.len() - 1;
+            } else {
+                self.front_index -= 1;
+            }
+        }
+    }
+
     pub fn next(&mut self) {
         let front = self.items.get(self.front_index);
         if front.is_some() {

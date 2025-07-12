@@ -1,5 +1,45 @@
-use rodio::{OutputStream, Sink, buffer::SamplesBuffer};
+use rodio::{OutputStream, Sink, Source, buffer::SamplesBuffer};
 use std::thread;
+
+pub struct SoundFile {
+    buffer: Vec<i16>,
+    sample_rate: u32,
+    ready: bool,
+}
+
+impl SoundFile {
+    pub fn new() -> Self {
+        Self {
+            sample_rate: SAMPLE_RATE,
+            buffer: vec![],
+            ready: false,
+        }
+    }
+
+    pub fn load_file(&mut self, file: &str) -> Result<(), String> {
+        self.ready = false;
+        let file = std::fs::File::open(file).map_err(|v| v.to_string())?;
+
+        let reader = std::io::BufReader::new(file);
+        let decoder = rodio::Decoder::new(reader).map_err(|v| v.to_string())?;
+
+        self.sample_rate = decoder.sample_rate();
+        self.buffer = decoder.buffered().collect();
+        self.ready = true;
+        Ok(())
+    }
+
+    pub fn play(&self, volume: f32) {
+        let samples = SamplesBuffer::new(1, self.sample_rate, &self.buffer[..]);
+        thread::spawn(move || {
+            play_buffer(samples, volume);
+        });
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.ready
+    }
+}
 
 const SAMPLE_RATE: u32 = 44100;
 const FREQ: f32 = 523.25; // C5
@@ -29,16 +69,19 @@ static SAMPLES: [i16; NUM_SAMPLES] = {
     generate_samples()
 };
 
-pub fn play_sound(vol: f32) {
+pub fn play_sound(volume: f32) {
     thread::spawn(move || {
-        let (_stream, handle) = OutputStream::try_default().unwrap();
-        let sink = Sink::try_new(&handle).unwrap();
-
         let source = SamplesBuffer::new(1, SAMPLE_RATE, &SAMPLES[..]);
-
-        sink.append(source);
-        sink.set_volume(vol);
-        sink.play();
-        sink.sleep_until_end();
+        play_buffer(source, volume);
     });
+}
+
+fn play_buffer(buffer: SamplesBuffer<i16>, volume: f32) {
+    let (_stream, handle) = OutputStream::try_default().unwrap();
+    let sink = Sink::try_new(&handle).unwrap();
+
+    sink.append(buffer);
+    sink.set_volume(volume);
+    sink.play();
+    sink.sleep_until_end();
 }

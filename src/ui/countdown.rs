@@ -1,9 +1,9 @@
-use eframe::egui::{self, RichText, Vec2};
+use crate::ui::circular_progress_bar;
+use eframe::egui;
 use egui::Color32;
 
 use crate::internal::clock::{Clock, State};
 use crate::internal::queue::Queue;
-use crate::ui::circular_progress_bar;
 
 pub struct CountdownElement {
     timers: Queue<(Clock, Color32)>,
@@ -75,6 +75,13 @@ impl CountdownElement {
         self.get_state() == State::Finished
     }
 
+    fn prev(&mut self) {
+        self.timers.prev();
+        if let Some(clock) = self.get_clock_mut() {
+            clock.reset();
+        }
+    }
+
     fn next(&mut self) {
         let play_once_pause_condition = self.play_once && self.timers.is_last();
         self.timers.next();
@@ -100,23 +107,36 @@ impl CountdownElement {
     }
 
     fn draw_buttons(&mut self, ui: &mut egui::Ui) {
-        ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-            let button_size = Vec2::new(120.0, 40.0);
-            if self.is_running() {
-                let stop_button =
-                    egui::Button::new(RichText::new("Stop").size(20.0)).min_size(button_size);
+        let layout = egui::Layout::centered_and_justified(egui::Direction::LeftToRight);
 
-                if ui.add(stop_button).clicked() {
-                    self.get_clock_mut().unwrap().stop();
-                }
-            } else {
-                let start_button =
-                    egui::Button::new(RichText::new("Start").size(20.0)).min_size(button_size);
+        ui.allocate_ui_with_layout([240., 40.].into(), layout, |ui| {
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    let button = egui::Button::new("<").min_size([60., 40.].into());
+                    if ui.add_sized([60., 40.], button).clicked() {
+                        self.prev();
+                        self.get_clock_mut().unwrap().stop();
+                    }
 
-                if ui.add(start_button).clicked() {
-                    self.get_clock_mut().unwrap().start();
-                }
-            }
+                    if self.is_running() {
+                        let button = egui::Button::new("Stop").min_size([120., 40.].into());
+                        if ui.add(button).clicked() {
+                            self.get_clock_mut().unwrap().stop();
+                        }
+                    } else {
+                        let button = egui::Button::new("Start").min_size([120., 40.].into());
+                        if ui.add(button).clicked() {
+                            self.get_clock_mut().unwrap().start();
+                        }
+                    };
+
+                    let button = egui::Button::new(">").min_size([60., 40.].into());
+                    if ui.add_sized([60., 40.], button).clicked() {
+                        self.next();
+                        self.get_clock_mut().unwrap().stop();
+                    }
+                });
+            });
         });
     }
 
@@ -130,12 +150,15 @@ impl CountdownElement {
             None
         };
 
-        if let Some(clock) = self.get_clock() {
-            self.draw_progress(ui, clock, self.get_color());
-            self.draw_buttons(ui);
-        } else {
-            self.draw_placeholder(ui, self.get_color());
-        }
+        ui.vertical_centered(|ui| {
+            if let Some(clock) = self.get_clock() {
+                self.draw_progress(ui, clock, self.get_color());
+                ui.add_space(16.);
+                self.draw_buttons(ui);
+            } else {
+                self.draw_placeholder(ui, self.get_color());
+            }
+        });
 
         signal
     }
