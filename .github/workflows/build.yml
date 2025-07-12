@@ -12,28 +12,30 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.target == 'x86_64-pc-windows-msvc' && 'windows-latest' || 
+                 inputs.target == 'x86_64-apple-darwin' && 'macos-latest' || 
+                 'ubuntu-latest' }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add target
+      - name: Install Rust target
         run: rustup target add ${{ inputs.target }}
 
-      - name: Build
+      - name: Build binary
         run: cargo build --release --target ${{ inputs.target }}
 
-      - name: Set binary path
-        id: binpath
+      - name: Determine binary path
+        id: bin
+        shell: bash
         run: |
+          NAME=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].name')
           EXT=""
-          case "${{ inputs.target }}" in
-            *windows*) EXT=".exe" ;;
-          esac
-          echo "BIN_PATH=target/${{ inputs.target }}/release/interval-timer${EXT}" >> "$GITHUB_ENV"
+          [[ "${{ inputs.target }}" == *windows* ]] && EXT=".exe"
+          echo "BIN_PATH=target/${{ inputs.target }}/release/${NAME}${EXT}" >> "$GITHUB_ENV"
 
-      - name: Upload
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
           path: ${{ env.BIN_PATH }}
-
