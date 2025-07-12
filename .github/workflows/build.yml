@@ -1,0 +1,39 @@
+name: Build Binary
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      artifact_name:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add target
+        run: rustup target add ${{ inputs.target }}
+
+      - name: Build
+        run: cargo build --release --target ${{ inputs.target }}
+
+      - name: Set binary path
+        id: binpath
+        run: |
+          EXT=""
+          case "${{ inputs.target }}" in
+            *windows*) EXT=".exe" ;;
+          esac
+          echo "BIN_PATH=target/${{ inputs.target }}/release/interval-timer${EXT}" >> "$GITHUB_ENV"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ env.BIN_PATH }}
+
