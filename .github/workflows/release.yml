@@ -20,7 +20,7 @@ jobs:
   build-windows:
     uses: ./.github/workflows/build.yml
     with:
-      target: x86_64-pc-windows-gnu
+      target: x86_64-pc-windows-msvc
       artifact_name: interval-timer-windows_x86_64.exe
 
   release:
