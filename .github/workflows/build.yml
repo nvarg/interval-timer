@@ -31,14 +31,15 @@ jobs:
       - name: Build binary
         run: cargo build --release --target ${{ inputs.target }}
 
-      - name: Determine binary path
-        id: bin
+      - name: Set binary path
         shell: bash
         run: |
           NAME=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].name')
           EXT=""
           [[ "${{ inputs.target }}" == *windows* ]] && EXT=".exe"
-          echo "BIN_PATH=target/${{ inputs.target }}/release/${NAME}${EXT}" >> "$GITHUB_ENV"
+          BIN_PATH="target/${{ inputs.target }}/release/${NAME}${{ runner.os }}${EXT}"
+          mv "target/${{ inputs.target }}/release/${NAME}${EXT}" "${BIN_PATH}"
+          echo "BIN_PATH=${BIN_PATH}" >> "$GITHUB_ENV"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
