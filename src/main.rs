@@ -1,4 +1,6 @@
-use eframe::{self};
+#![windows_subsystem = "windows"]
+
+use eframe;
 
 mod app;
 mod internal;

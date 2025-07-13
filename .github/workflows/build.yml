@@ -1,0 +1,48 @@
+name: Build Binary
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        required: true
+        type: string
+      artifact_name:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ${{ inputs.target == 'x86_64-pc-windows-msvc' && 'windows-latest' || 
+                 inputs.target == 'x86_64-apple-darwin' && 'macos-latest' || 
+                 'ubuntu-latest' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        if: contains(inputs.target, 'unknown-linux-gnu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: Install Rust target
+        run: rustup target add ${{ inputs.target }}
+
+      - name: Build binary
+        run: cargo build --release --target ${{ inputs.target }}
+
+      - name: Set binary path
+        shell: bash
+        run: |
+          NAME=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].name')
+          EXT=""
+          [[ "${{ inputs.target }}" == *windows* ]] && EXT=".exe"
+          BIN_PATH="target/${{ inputs.target }}/release/${NAME}${{ runner.os }}${EXT}"
+          mv "target/${{ inputs.target }}/release/${NAME}${EXT}" "${BIN_PATH}"
+          echo "BIN_PATH=${BIN_PATH}" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ env.BIN_PATH }}
